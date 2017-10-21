@@ -53,7 +53,7 @@ books = ('A Dark Nights Work.txt',
 # Start timing of getting all text: Testing for optimization
 start = timeit.default_timer()
 tokens = []
-V = 10 # 'V' is the size of our model dictionary which we will populate with 'V-1' choices of follow up word in any given bigram
+V = 1000 # 'V' is the size of our model dictionary which we will populate with 'V-1' choices of follow up word in any given bigram
 model = {} # The dictionary in which I create my model
 modelFileName = 'model{}.pickle'.format(V)
 if os.path.exists(modelFileName) and os.path.getsize(modelFileName) > 0:
@@ -75,6 +75,10 @@ else:
 	
 	# Get V amount of most popular tokens and make a V*(V-1) dictionary with frequency counts
 	words = fdist.most_common(V)
+	
+	# Clean bigrams
+	cleaned_bigrams = [a for a in bigrams if a[0] in words and a[1] in words]
+	
 	for word in words:
 		model[word[0]] = {}
 		for word2 in words:
@@ -90,7 +94,7 @@ else:
 end = timeit.default_timer()
 print(end-start)
 
-print(model)
+print(cleaned_bigrams)
 
 for item in model:
 	print('{:15s} : {:10s}'.format('START OF BIGRAM', item))
@@ -99,6 +103,7 @@ for item in model:
 	print('------------------------------------------------------------------')
 
 ## TODO:
+## 
 ## make Lapace constant out of frequency of bottom bigrams with less than 10 count
 ## add lapace constant to all counts
 ## get row count
