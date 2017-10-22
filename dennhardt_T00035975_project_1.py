@@ -133,11 +133,15 @@ print(end-start)
 # 	print('------------------------------------------------------------------')
 
 sentence = []
-randomStart = random.choice(list(model.keys()))
-while(randomStart!='.'):
+sentenceEnders = ['.','!','?']
+randomStart = '.'
+while(randomStart in sentenceEnders):
+	randomStart = random.choice(list(model.keys()))
+sentence.append(randomStart.capitalize())
+while(randomStart not in sentenceEnders):
 	nextWordList = model[randomStart]
 	nextWord = weighted_choice(nextWordList)
 	randomStart=nextWord
-	sentence.append(randomStart)
+	sentence.append('I' if randomStart=='i' else randomStart)
 	
 print(*sentence)
