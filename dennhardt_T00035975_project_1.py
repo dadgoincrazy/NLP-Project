@@ -40,6 +40,26 @@ def weighted_choice(choices):
 			return c
 		upto += w
 
+# Create a sentence and return it and print it
+def getSentence(model):
+	sentence = []
+	avgProb = 0
+	sentenceEnders = ['.', '?', '!']
+	randomStart = '.'
+	while(randomStart in sentenceEnders):
+		randomStart = random.choice(list(model.keys()))
+	sentence.append(randomStart.capitalize())
+	while(randomStart not in sentenceEnders):
+		nextWordList = model[randomStart]
+		nextWord = weighted_choice(nextWordList)
+		avgProb += model[randomStart][nextWord]
+		randomStart=nextWord
+		sentence.append('I' if randomStart=='i' else randomStart)
+	
+	avgProb = avgProb / len(sentence)
+	print(*sentence, avgProb)
+	return (sentence, avgProb)
+
 # Incase you run in an IDE which changes the CWD, this changes the save location of files to the same directory as the python file
 abspath = os.path.abspath(__file__)
 dname = os.path.dirname(abspath)
@@ -132,16 +152,12 @@ print(end-start)
 # 		print('{:15} : {:10s} - probability {}'.format('Followed by', key, model[item][key]))
 # 	print('------------------------------------------------------------------')
 
-sentence = []
-sentenceEnders = ['.','!','?']
-randomStart = '.'
-while(randomStart in sentenceEnders):
-	randomStart = random.choice(list(model.keys()))
-sentence.append(randomStart.capitalize())
-while(randomStart not in sentenceEnders):
-	nextWordList = model[randomStart]
-	nextWord = weighted_choice(nextWordList)
-	randomStart=nextWord
-	sentence.append('I' if randomStart=='i' else randomStart)
-	
-print(*sentence)
+sentence1 = getSentence(model)
+sentence2 = getSentence(model)
+
+if(sentence1[1] > sentence2[1]):
+	print("The first sentence is more probable")
+elif(sentence2[1] > sentence1[1]):
+	print("The second sentence is more probable")
+else:
+	print("Both sentences are equally probable, wow!")
