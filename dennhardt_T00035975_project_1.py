@@ -8,8 +8,9 @@ import os
 import timeit
 import re
 import pickle
+import math
+import random
 from urllib.request import urlopen
-#from operator import itemgetter
 
 # Definitions
 def download_page(url):
@@ -27,6 +28,17 @@ def trivialTokenizer(text):
    # remove \d+| if you want to get rid of all digit sequences
    pattern = re.compile(r"\d+|Mr\.|Mrs\.|Dr\.|\b[A-Z]\.|[a-zA-Z_]+-[a-zA-Z_]+-[a-zA-Z_]+|[a-zA-Z_]+-[a-zA-Z_]+|[a-zA-Z_]+|--|'s|'t|'d|'ll|'m|'re|'ve|[.,:!?;\"'()\[\]&@#-]")
    return(re.findall(pattern, text))
+
+# found at : https://stackoverflow.com/questions/14992521/python-weighted-random
+def weighted_choice(choices):
+	choices = dict_to_list(choices)
+	total = sum(w for c, w in choices)
+	r = random.uniform(0, total)
+	upto = 0
+	for c, w in choices:
+		if upto + w >= r:
+			return c
+		upto += w
 
 # Incase you run in an IDE which changes the CWD, this changes the save location of files to the same directory as the python file
 abspath = os.path.abspath(__file__)
@@ -53,7 +65,7 @@ books = ('A Dark Nights Work.txt',
 # Start timing of getting all text: Testing for optimization
 start = timeit.default_timer()
 tokens = []
-V = 1000 # 'V' is the size of our model dictionary which we will populate with 'V-1' choices of follow up word in any given bigram
+V = 4000 # 'V' is the size of our model dictionary which we will populate with 'V-1' choices of follow up word in any given bigram
 model = {} # The dictionary in which I create my model
 modelFileName = 'model{}.pickle'.format(V)
 if os.path.exists(modelFileName) and os.path.getsize(modelFileName) > 0:
@@ -67,7 +79,7 @@ else:
 	### Create bigrams of all the tokens
 	### (may result in 1 weird bigram when transitioning over books,
 	### I figured this isn't a huge issue but I didn't know how to append to a generator type object in python)
-	bigrams = nltk.bigrams(token.lower() for token in tokens)
+	bigrams = list(nltk.bigrams(token.lower() for token in tokens))
 	
 	# Create Frequency Dist for tokens and bigrams
 	fdist = nltk.FreqDist(token.lower() for token in tokens)
@@ -75,17 +87,36 @@ else:
 	
 	# Get V amount of most popular tokens and make a V*(V-1) dictionary with frequency counts
 	words = fdist.most_common(V)
+	words = [w[0] for w in words]
 	
 	# Clean bigrams
 	cleaned_bigrams = [a for a in bigrams if a[0] in words and a[1] in words]
+	fdistCleaned = nltk.FreqDist(cleaned_bigrams)
+	
+	# TODO get bigrams with occurances less than 10, for now substituted 90% of V
+	L = math.floor(len(cleaned_bigrams) * 0.9)
+	lapace = 1/L
+	
+	print('Bigrams is len : ', len(bigrams))
+	print('Cleaned is len : ', len(cleaned_bigrams))
+	print('Lapace is : ', lapace)
 	
 	for word in words:
-		model[word[0]] = {}
+		model[word] = {}
+		rowCount = 0
+		sanityCheck = 0
 		for word2 in words:
-			if(word[0] != word2[0]):
-				pair = (word[0], word2[0])
-				amount = fdistBigrams[pair]
-				model[word[0]][word2[0]]=amount
+			if(word != word2):
+				pair = (word, word2)
+				amount = fdistCleaned[pair] + lapace
+				model[word][word2]=amount
+				rowCount += amount
+		for word2 in words:
+			if(word != word2):
+				probability = model[word][word2] / rowCount
+				model[word][word2] = probability
+				sanityCheck += probability
+		print(sanityCheck)
 	
 	with open(modelFileName, 'wb') as handle:
 		pickle.dump(model, handle, protocol=pickle.HIGHEST_PROTOCOL)
@@ -94,17 +125,19 @@ else:
 end = timeit.default_timer()
 print(end-start)
 
-print(cleaned_bigrams)
+### Prints out the model
+# for item in model:
+# 	print('{:15s} : {:10s}'.format('START OF BIGRAM', item))
+# 	for key in model[item]:
+# 		print('{:15} : {:10s} - probability {}'.format('Followed by', key, model[item][key]))
+# 	print('------------------------------------------------------------------')
 
-for item in model:
-	print('{:15s} : {:10s}'.format('START OF BIGRAM', item))
-	for key in model[item]:
-		print('{:15} : {:10s} - happens {} times'.format('Followed by', key, model[item][key]))
-	print('------------------------------------------------------------------')
-
-## TODO:
-## 
-## make Lapace constant out of frequency of bottom bigrams with less than 10 count
-## add lapace constant to all counts
-## get row count
-## probability = count / row count
+sentence = []
+randomStart = random.choice(list(model.keys()))
+while(randomStart!='.'):
+	nextWordList = model[randomStart]
+	nextWord = weighted_choice(nextWordList)
+	randomStart=nextWord
+	sentence.append(randomStart)
+	
+print(*sentence)
